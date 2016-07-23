@@ -1,77 +1,63 @@
 var request = require('request');
-var ntp = require('ntp-client');
 
 // My coordinates
-var lat = 34.00872705055818; //40.063161596659775;
-var lon = -118.49764466285706; //-105.20044326782227;
+var lat = 40.059409; //40.063161596659775;
+var lon = -105.2151322; //-105.20044326782227;
 
 // List of Pokemon to look for
-var watchlist = ["19", "46", "60"];
+var watchlist = ["19"];
 
 // URLs
 var url = "https://pokevision.com/map/data/" + lat + "/" + lon;
 var gMap = "maps.google.com/maps?q=loc:";
 
-// Get page
-request(url, function(error, response, html) {
-    if (!error) {
+function parseList(html) {
+   
+    // ***TEST***
+    //console.log(html);
+    
+    // Parse the received JSON
+    var pokemon = JSON.parse(html);
+    pokemon = pokemon["pokemon"];
+    
+    // ***TEST***
+    console.log(pokemon);
+    console.log("---");
+    
+    // Look for Pokemon in watchlist
+    for (var i = 0; i < pokemon.length; i++) {
+        var p = pokemon[i];
+        //console.log(p["pokemonId"] + " -> " + watchlist.indexOf(p["pokemonId"]));
         
-        // ***TEST***
-        //console.log(html);
-        
-        // Parse the received JSON
-        var pokemon = JSON.parse(html);
-        pokemon = pokemon["pokemon"];
-        
-        // ***TEST***
-        console.log(pokemon);
-        console.log("---");
-        
-        // Look for Pokemon in watchlist
-        for (var i = 0; i < pokemon.length; i++) {
-            var p = pokemon[i];
-            console.log(p["pokemonId"] + " -> " + watchlist.indexOf(p["pokemonId"]));
+        // If Pokemon is in watchlist, send info
+        if (watchlist.indexOf(p["pokemonId"]) != -1) {
             
-            // If Pokemon is in watchlist, construct Google Maps URL
-            if (watchlist.indexOf(p["pokemonId"]) != -1) {
-                console.log("Hit!");
-                var loc = gMap + p["latitude"] + "," + p["longitude"];
-                getTimeLeft(loc, p["expiration_time"]);
-            }
+            // Construct Google map URL
+            var loc = gMap + p["latitude"] + "," + p["longitude"];
+            
+            // Calc time left in seconds
+            var now = new Date();
+            var timeLeft = p["expiration_time"] - (now.getTime() / 1000);
+            var minLeft = Math.floor(timeLeft / 60);
+            var secLeft = Math.round(timeLeft % 60);
+            
+            // Show how much time left and where
+            console.log("Pokemon: " + p["pokemonId"]);
+            console.log("Time left: " + minLeft + ":" + secLeft);
+            console.log(loc);
+            console.log("---");
         }
     }
-});
-
-// Get the local time, calculate expiration time, and print
-function getTimeLeft(loc, expiration) {
-
-    var now = new Date();
-    
-    // Calc time left in seconds
-    var timeLeft = expiration - (now.getTime() / 1000);
-    console.log(timeLeft);
-    var minLeft = Math.floor(timeLeft / 60);
-    var secLeft = timeLeft % 60;
-    
-    // Show how much time left and where
-    console.log("Time left: " + minLeft + ":" + secLeft);
-    console.log(loc);
-
-/*
-    ntp.getNetworkTime("pool.ntp.org", 123, function(err, date) {
-        if (err) {
-            console.error(err);
-            return;
-        }
-        
-        // Calc time left in seconds
-        var timeLeft = expiration - (date.getTime() / 1000);
-        console.log(timeLeft);
-        var minLeft = Math.floor(timeLeft / 60);
-        var secLeft = timeLeft % 60;
-        
-        // Show how much time left and where
-        console.log("Time left: " + minLeft + ":" + secLeft);
-        console.log(loc);
-    });*/
 }
+
+// Start here
+function doScan() {
+    console.log("Scanning");
+    request(url, function(error, response, html) {
+        if (!error) {
+            parseList(html);
+        }
+    });
+    setTimeout(doScan, 45000);
+}
+doScan();
